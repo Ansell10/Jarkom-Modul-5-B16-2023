@@ -284,6 +284,63 @@ subnet 192.186.8.0 netmask 255.255.252.0 {
 service isc-dhcp-server restart
 ```
 
+### Nomor 1
+> Agar topologi yang kalian buat dapat mengakses keluar, kalian diminta untuk mengkonfigurasi Aura menggunakan iptables, tetapi tidak ingin menggunakan MASQUERADE.
+```
+ETH0_IP=$(ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+iptables -t nat -A POSTROUTING -o eth0 -j SNAT --to-source $ETH0_IP
+```
+Kode di atas menyimpan ip eth0 ke dalam variabel ETH0_IP kemudian menjalankan iptables sesuai variable tersebut, sehingga kode tidak akan menggunaakn MASQUERADE. 
+
+#### Testing 1
+Melakukan ping google.com pada Aura
+![image](https://github.com/Ansell10/Jarkom-Modul-5-B16-2023/assets/114125933/b6345655-1846-4afe-b0ab-4c5ce5a16e52)
+
+### Nomor 2
+> Kalian diminta untuk melakukan drop semua TCP dan UDP kecuali port 8080 pada TCP.
+```
+# Drop semua koneksi UDP
+iptables -A INPUT -p udp -j DROP
+
+# Drop semua koneksi TCP kecuali port 8080
+iptables -A INPUT -p tcp ! --dport 8080 -j DROP
+```
+
+#### Testing 2
+```
+# testing
+nc -l -p 8080
+
+# testing client
+nc ip_port 8080
+```
+
+### Nomor 3
+> Kepala Suku North Area meminta kalian untuk membatasi DHCP dan DNS Server hanya dapat dilakukan ping oleh maksimal 3 device secara bersamaan, selebihnya akan di drop.
+```
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+iptables -A INPUT -p icmp -m connlimit --connlimit-above 3 --connlimit-mask 0 -j DROP
+```
+
+### Nomor 4
+> Lakukan pembatasan sehingga koneksi SSH pada Web Server hanya dapat dilakukan oleh masyarakat yang berada pada GrobeForest.
+```
+# Allow SSH from a specific IP range
+iptables -A INPUT -p tcp --dport 22 -m iprange --src-range 192.186.8.3-192.186.10.5 -j ACCEPT
+
+# Drop SSH from all other sources
+iptables -A INPUT -p tcp --dport 22 -j DROP
+```
+
+#### Testing 4
+```
+# testing webserver
+nc -l -p 22
+
+# testing client (grobeforest)
+nc 10.12.14.142 22
+```
+
 ### Nomor 5
 > Selain itu, akses menuju WebServer hanya diperbolehkan saat jam kerja yaitu Senin-Jumat pada pukul 08.00-16.00.
 
