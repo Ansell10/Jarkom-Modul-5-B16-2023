@@ -305,6 +305,9 @@ iptables -A INPUT -p udp -j DROP
 # Drop semua koneksi TCP kecuali port 8080
 iptables -A INPUT -p tcp ! --dport 8080 -j DROP
 ```
+Kode iptables tersebut menjelaskan aturan-aturan firewall sebagai berikut:
+- Semua koneksi UDP ditolak.
+- Semua koneksi TCP ditolak kecuali yang menuju port 8080.
 
 #### Testing 2
 ```
@@ -314,6 +317,9 @@ nc -l -p 8080
 # testing client
 nc ip_port 8080
 ```
+Kode tersebut melakukan uji coba koneksi menggunakan netcat:
+- nc -l -p 8080: Sistem mendengarkan koneksi pada port 8080.
+- nc ip_port 8080: Melakukan koneksi uji coba ke alamat IP dan port 8080.
 
 ### Nomor 3
 > Kepala Suku North Area meminta kalian untuk membatasi DHCP dan DNS Server hanya dapat dilakukan ping oleh maksimal 3 device secara bersamaan, selebihnya akan di drop.
@@ -321,6 +327,9 @@ nc ip_port 8080
 iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A INPUT -p icmp -m connlimit --connlimit-above 3 --connlimit-mask 0 -j DROP
 ```
+Aturan iptables tersebut dapat memiliki fungsi sebagai berikut:
+- Izinkan koneksi terkait: Izinkan paket yang terkait dengan koneksi yang sudah dibuat atau yang terkait dengan koneksi yang sedang berlangsung.
+- Batas koneksi ICMP: Tolak paket ICMP (ping, dll.) jika jumlah koneksi dari satu IP melebihi 3 dalam waktu yang singkat.
 
 ### Nomor 4
 > Lakukan pembatasan sehingga koneksi SSH pada Web Server hanya dapat dilakukan oleh masyarakat yang berada pada GrobeForest.
@@ -331,15 +340,21 @@ iptables -A INPUT -p tcp --dport 22 -m iprange --src-range 192.186.8.3-192.186.1
 # Drop SSH from all other sources
 iptables -A INPUT -p tcp --dport 22 -j DROP
 ```
+Kode iptables tersebut memiliki dua aturan untuk mengelola akses SSH:
+- Izinkan koneksi SSH (port 22) hanya dari alamat IP antara 192.186.8.3 dan 192.186.10.5.
+- Tolak koneksi SSH (port 22) dari semua sumber selain rentang IP yang telah diizinkan sebelumnya.
 
 #### Testing 4
 ```
 # testing webserver
 nc -l -p 22
 
-# testing client (grobeforest)
-nc 10.12.14.142 22
+# testing client
+nc 192.186.14.142 22
 ```
+Kode tersebut digunakan untuk melakukan uji coba koneksi menggunakan netcat:
+- nc -l -p 22: Sistem mendengarkan koneksi pada port 22 (umumnya digunakan untuk SSH, bukan webserver).
+- nc 192.186.14.142 22: Melakukan koneksi uji coba ke server dengan alamat IP 192.186.14.142 pada port 22.
 
 ### Nomor 5
 > Selain itu, akses menuju WebServer hanya diperbolehkan saat jam kerja yaitu Senin-Jumat pada pukul 08.00-16.00.
