@@ -284,3 +284,139 @@ subnet 192.186.8.0 netmask 255.255.252.0 {
 service isc-dhcp-server restart
 ```
 
+### Nomor 5
+> Selain itu, akses menuju WebServer hanya diperbolehkan saat jam kerja yaitu Senin-Jumat pada pukul 08.00-16.00.
+
+Untuk menjawab ini, perlu dilakukan konfigurasi firewall pada kedua webserver Sein dan Stark
+```
+iptables -A INPUT -m time --timestart 08:00 --timestop 16:00 --weekdays Mon,Tue,Wed,Thu,Fri -j ACCEPT
+
+iptables -A INPUT -j REJECT
+```
+
+Hasil testing menggunakan nc dari client ke salah satu webserver :
+
+![image](https://github.com/Ansell10/Jarkom-Modul-5-B16-2023/assets/96367502/55bf494d-79d6-43ea-bd82-47c4fdb21875)
+
+![image](https://github.com/Ansell10/Jarkom-Modul-5-B16-2023/assets/96367502/5879db3b-4f94-4f3b-ae91-f15d801b5137)
+
+Disimpulkan bahwa ketika set date menjadi diluar jam kerja, maka koneksi akan ditolak. Jika masuk pada interval jam tersebut, maka koneksi diterima
+
+### Nomor 6
+> Lalu, karena ternyata terdapat beberapa waktu di mana network administrator dari WebServer tidak bisa stand by, sehingga perlu ditambahkan rule bahwa akses pada hari Senin - Kamis pada jam 12.00 - 13.00 dilarang (istirahat maksi cuy) dan akses di hari Jumat pada jam 11.00 - 13.00 juga dilarang (maklum, Jumatan rek).
+
+Untuk penyelesaiannya, dapat melengkapi rules yang sudah ada, dengan menambahkan rules tambahan tersebut menjadi prioritas. Sehingga konfig akan menjadi :
+```
+# Batasi akses pada Senin - Kamis dari pukul 12:00 hingga 13:00
+iptables -A INPUT -m time --timestart 12:00 --timestop 13:00 --weekdays Mon,Tue,Wed,Thu -j REJECT
+
+# Batasi akses pada Jumat dari pukul 11:00 hingga 13:00
+iptables -A INPUT -m time --timestart 11:00 --timestop 13:00 --weekdays Fri -j REJECT
+
+# Izinkan akses pada Senin - Jumat dari pukul 08:00 hingga 16:00
+iptables -A INPUT -m time --timestart 08:00 --timestop 16:00 --weekdays Mon,Tue,Wed,Thu,Fri -j ACCEPT
+
+# Tolak akses pada waktu lainnya
+iptables -A INPUT -j REJECT
+```
+
+Hasil : 
+
+![image](https://github.com/Ansell10/Jarkom-Modul-5-B16-2023/assets/96367502/57fb6317-3a91-44dc-b7c6-c1eaac08dec9)
+
+
+
+### Nomor 7
+> Karena terdapat 2 WebServer, kalian diminta agar setiap client yang mengakses Sein dengan Port 80 akan didistribusikan secara bergantian pada Sein dan Stark secara berurutan dan request dari client yang mengakses Stark dengan port 443 akan didistribusikan secara bergantian pada Sein dan Stark secara berurutan.
+
+Untuk nomor 7 kelompok kami belum bisa menyelesaikannya. Namun secara umum, untuk permasalahan ini dapat diselesaikan menggunakan load balancing dari apache2 ataupun webserver untuk mengalihkan traffic secara bergantian (round robin). Kemudian implementasikan pula rules pada firewall untuk preroutingnya.
+
+
+### Nomor 8
+> Karena berbeda koalisi politik, maka subnet dengan masyarakat yang berada pada Revolte dilarang keras mengakses WebServer hingga masa pencoblosan pemilu kepala suku 2024 berakhir. Masa pemilu (hingga pemungutan dan penghitungan suara selesai) kepala suku bersamaan dengan masa pemilu Presiden dan Wakil Presiden Indonesia 2024.
+
+Untuk menyelesaikannya, berikan rules firewall berikut : 
+
+[Dengan informasi bahwa subnet dimana revolte berada adalah 192.186.14.128/30]
+```
+# reject subnet 192.186.14.128
+iptables -A INPUT -p tcp -s 192.186.14.128/30 -m time --datestart 2023-12-10 --datestop 2024-02-15 -j DROP
+
+# Batasi akses pada Senin - Kamis dari pukul 12:00 hingga 13:00
+iptables -A INPUT -m time --timestart 12:00 --timestop 13:00 --weekdays Mon,Tue,Wed,Thu -j REJECT
+
+# Batasi akses pada Jumat dari pukul 11:00 hingga 13:00
+iptables -A INPUT -m time --timestart 11:00 --timestop 13:00 --weekdays Fri -j REJECT
+
+# Izinkan akses pada Senin - Jumat dari pukul 08:00 hingga 16:00
+iptables -A INPUT -m time --timestart 08:00 --timestop 16:00 --weekdays Mon,Tue,Wed,Thu,Fri -j ACCEPT
+
+# Tolak akses pada waktu lainnya
+iptables -A INPUT -j REJECT
+```
+
+Hasil : 
+
+![image](https://github.com/Ansell10/Jarkom-Modul-5-B16-2023/assets/96367502/ca5fc5a1-e521-4d12-964a-5d016bf94505)
+
+![image](https://github.com/Ansell10/Jarkom-Modul-5-B16-2023/assets/96367502/d5f56807-ea9e-4fea-847f-b35488d13697)
+
+
+![image](https://github.com/Ansell10/Jarkom-Modul-5-B16-2023/assets/96367502/86d896d4-499c-4d4c-b7b4-3a9a1e40c0a4)
+
+
+![image](https://github.com/Ansell10/Jarkom-Modul-5-B16-2023/assets/96367502/ae9131c9-4666-4f45-9190-61912000e57e)
+
+
+### Nomor 9
+> Sadar akan adanya potensial saling serang antar kubu politik, maka WebServer harus dapat secara otomatis memblokir  alamat IP yang melakukan scanning port dalam jumlah banyak (maksimal 20 scan port) di dalam selang waktu 10 menit.
+
+```
+# Membuat chain khusus untuk menangani port scanning
+iptables -N PORTSCAN
+
+# Aturan drop jika terdapat lebih dari 20 scan port dalam 10 menit
+iptables -A PORTSCAN -m recent --name portscan --update --seconds 600 --hitcount 20 -j DROP
+
+# Aturan untuk mengaktifkan tracking pada alamat IP yang melakukan scanning port
+iptables -A PORTSCAN -m recent --name portscan --set -j ACCEPT
+
+# Mengizinkan paket yang tidak terkait dengan port scanning
+iptables -A PORTSCAN -j ACCEPT
+
+# Mengintegrasikan chain PORTSCAN ke dalam chain INPUT
+iptables -I INPUT -j PORTSCAN
+```
+
+hasil : 
+
+![image](https://github.com/Ansell10/Jarkom-Modul-5-B16-2023/assets/96367502/53b5786f-431b-4b84-8bdd-028dfc7c082e)
+
+Dari hasil di atas, terlihat bahwa laubhills melakukan ping ke ip sein sebanyak 25 paket. Namun hanya 20 yang berhasil dan sisanya loss. Ini dikarenakan 20 paket tersebut dikirim pada kurun waktu 10 menit pertama, sehingga server mendeteksi adanya spam (sesuai definisi pada rules firewall yang dibuat). Maka semua paket yang berasal dari host laubhills akan di drop, yang mengakibatkan paket loss.
+
+### Nomor 10
+> Karena kepala suku ingin tau paket apa saja yang di-drop, maka di setiap node server dan router ditambahkan logging paket yang di-drop dengan standard syslog level.
+
+```
+# Membuat chain khusus untuk menangani port scanning
+iptables -N PORTSCAN
+
+# Aturan untuk log dan drop jika terdapat lebih dari 20 scan port dalam 10 menit
+iptables -A PORTSCAN -m recent --name portscan --update --seconds 600 --hitcount 20 -j LOG --log-prefix "PORTSCAN-DROP: " --log-level warning --log-ip-options --log-tcp-options --log-uid
+iptables -A PORTSCAN -m recent --name portscan --update --seconds 600 --hitcount 20 -j DROP
+
+# Aturan untuk mengaktifkan tracking pada alamat IP yang melakukan scanning port
+iptables -A PORTSCAN -m recent --name portscan --set -j ACCEPT
+
+# Mengizinkan paket yang tidak terkait dengan port scanning
+iptables -A PORTSCAN -j ACCEPT
+
+# Mengintegrasikan chain PORTSCAN ke dalam chain INPUT
+iptables -I INPUT -j PORTSCAN
+```
+
+Hasil : 
+![image](https://github.com/Ansell10/Jarkom-Modul-5-B16-2023/assets/96367502/8ece7527-d9dc-4a28-8ff1-b57d261c3146)
+
+
+Dari hasil, terlihat bahwa rules firewall LOG sudah berjalan, namun kami belum bisa meng-invoke file log yang diperintahkan, walaupun sudah kami konfigurasi pada service syslog pada webserver.
