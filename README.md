@@ -199,3 +199,88 @@ route add -net 192.186.14.128 netmask 255.255.255.252 gw 192.186.14.3
 route add -net 0.0.0.0 netmask 0.0.0.0 gw 192.186.14.1
 ```
 
+## DHCP Server
+```
+echo nameserver 192.168.122.1 > /etc/resolv.conf
+
+apt-get update
+apt-get install isc-dhcp-server -y
+dhcpd --version
+
+service isc-dhcp-server start
+
+echo '
+INTERFACES="eth0"
+' > /etc/default/isc-dhcp-server
+
+echo '
+option domain-name "example.org";
+option domain-name-servers ns1.example.org, ns2.example.org;
+
+default-lease-time 600;
+max-lease-time 7200;
+
+ddns-update-style none;
+
+subnet 192.186.14.128 netmask 255.255.255.252 {
+    option routers 192.186.14.129;
+}
+
+subnet 192.186.14.132 netmask 255.255.255.252 {
+}
+
+subnet 192.186.14.136 netmask 255.255.255.252 {
+    option routers 192.186.14.136;
+}
+
+subnet 192.186.14.140 netmask 255.255.255.252 {
+}
+
+subnet 192.186.14.144 netmask 255.255.255.252 {
+    option routers 192.186.14.145;
+}
+
+subnet 192.186.14.148 netmask 255.255.255.252 {
+    option routers 192.186.14.150;
+}
+
+subnet 192.186.12.0 netmask 255.255.254.0 {
+    range 192.186.12.2 192.186.13.1;
+    option routers 192.186.12.1;
+    option broadcast-address 192.186.13.255;
+    option domain-name-servers 192.186.14.134;
+    default-lease-time 720;
+    max-lease-time 5760;
+}
+
+subnet 192.186.14.0 netmask 255.255.255.128 {
+    range 192.186.14.4 192.186.14.67;
+    option routers 192.186.14.1;
+    option broadcast-address 192.186.14.127;
+    option domain-name-servers 192.186.14.134;
+    default-lease-time 720;
+    max-lease-time 5760;
+}
+
+subnet 192.186.0.0 netmask 255.255.248.0 {
+    range 192.186.0.2 192.186.4.4;
+    option routers 192.186.0.1;
+    option broadcast-address 192.186.7.255;
+    option domain-name-servers 192.186.14.134;
+    default-lease-time 720;
+    max-lease-time 5760;
+}
+
+subnet 192.186.8.0 netmask 255.255.252.0 {
+    range 192.186.8.3 192.186.10.5;
+    option routers 192.186.8.1;
+    option broadcast-address 192.186.11.255;
+    option domain-name-servers 192.186.14.134;
+    default-lease-time 720;
+    max-lease-time 5760;
+}
+' > /etc/dhcp/dhcpd.conf
+
+service isc-dhcp-server restart
+```
+
